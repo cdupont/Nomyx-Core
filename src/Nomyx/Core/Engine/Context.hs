@@ -51,8 +51,8 @@ unQualImports =  ["Nomyx.Language",
                   "System.Random"]
 
 defaultPackages :: [String]
-defaultPackages = ["Nomyx-Language",
-                   "Nomyx-Library",
+defaultPackages = ["nomyx-language",
+                   "nomyx-library",
                    "array",
                    "base",
                    "bytestring",

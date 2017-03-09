@@ -17,7 +17,7 @@ import qualified Data.Text.IO as DT
 import           Data.Acid
 import           Data.Acid.Memory
 import           Data.Time hiding (getCurrentTime)
-import           Paths_Nomyx_Core as PNC
+import           Paths_nomyx_core as PNC
 import           System.IO.Temp
 import           System.FilePath ((</>))
 import           System.Directory (createDirectoryIfMissing)
