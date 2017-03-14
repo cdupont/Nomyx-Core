@@ -20,6 +20,8 @@ module Nomyx.Core.Session (
   addRuleTemplate,
   delRuleTemplate,
   updateLibrary,
+  -- * Modules
+  newModule,  
   -- * IO
   inputResult,
   applyTimeEvent,
@@ -159,6 +161,16 @@ getModules pn rt = do
 
 getModule :: [ModuleInfo] -> FilePath -> Maybe ModuleInfo
 getModule ms fp = listToMaybe $ filter (\(ModuleInfo fp' _) -> (fp==fp')) ms
+
+newModule :: PlayerNumber -> ModuleInfo -> StateT Session IO ()
+newModule pn modi = do
+  info pn " inserted new module"
+  modifyProfile pn $ (pLibrary . mModules) %~ (addModule modi)
+
+addModule :: ModuleInfo -> [ModuleInfo] -> [ModuleInfo]
+addModule mi mis = case (find (\mi' -> (_modPath mi) == (_modPath mi'))) mis of
+  (Just mi') -> replace mi' mi mis
+  Nothing -> mi:mis
 
 submitRuleError :: RuleTemplate -> PlayerNumber -> GameName -> InterpreterError -> StateT Session IO ()
 submitRuleError sr pn gn e = do
