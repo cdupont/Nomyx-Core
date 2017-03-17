@@ -83,7 +83,7 @@ library
                      Nomyx.Core.Engine.Test
                      Paths_nomyx_core
                      Data.Todo
-    ghc-options: -W -threaded -DNO_INTERPRET_QUOTES
+    ghc-options: -W
     cpp-options: -DNO_INTERPRET_QUOTES
 
 Test-Suite test
@@ -91,7 +91,7 @@ Test-Suite test
     test-module:    Test
     hs-source-dirs: test
     build-depends: base,
-                   nomyx-core         == 0.7.6,
+                   nomyx-core         == 1.0.0,
                    Cabal              >= 0.22
 
 source-repository head
