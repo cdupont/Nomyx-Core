@@ -32,6 +32,8 @@ import qualified System.Posix.Signals as S
 #endif
 
 
+#ifndef NOINTER
+
 serverHandle :: ServerHandle
 serverHandle = unsafePerformIO $ start
 
@@ -96,6 +98,20 @@ readExt :: String -> Extension
 readExt s = case reads s of
   [(e,[])] -> e
   _        -> UnknownExtension s
+
+#else
+
+interpretRule :: RuleCode -> [ModuleInfo] -> IO (Either InterpreterError Rule)
+interpretRule rc ms = return $ Left $ NotAllowed "Interpreter not included"
+
+interpretRule' :: RuleCode -> [ModuleInfo] -> IO Rule
+interpretRule' rc ms = error "Interpreter not included"
+
+showInterpreterError :: InterpreterError -> String
+showInterpreterError (NotAllowed s)  = s
+
+#endif
+
 
 #ifdef WINDOWS
 
