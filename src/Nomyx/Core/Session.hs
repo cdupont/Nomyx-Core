@@ -44,7 +44,6 @@ import           Data.List
 import           Data.Maybe
 import           Data.Time                           as T
 import           Debug.Trace.Helpers
-import           Language.Haskell.Interpreter        (InterpreterError)
 import           Nomyx.Language
 import           Nomyx.Core.Engine                   as G
 import           Nomyx.Core.Engine.Interpret
@@ -149,7 +148,8 @@ compileRule rt pn gn re msg = do
          modifyProfile pn (pLastRule .~ Just (rt, msg))
          return True
       Left e -> do
-         submitRuleError rt pn gn e
+         let errorMsg = showInterpreterError e
+         submitRuleError rt pn gn errorMsg 
          return False
 
 getModules :: PlayerNumber -> RuleTemplate -> StateT Session IO [ModuleInfo]
@@ -172,9 +172,8 @@ addModule mi mis = case (find (\mi' -> (_modPath mi) == (_modPath mi'))) mis of
   (Just mi') -> replace mi' mi mis
   Nothing -> mi:mis
 
-submitRuleError :: RuleTemplate -> PlayerNumber -> GameName -> InterpreterError -> StateT Session IO ()
-submitRuleError sr pn gn e = do
-   let errorMsg = showInterpreterError e
+submitRuleError :: RuleTemplate -> PlayerNumber -> GameName -> String -> StateT Session IO ()
+submitRuleError sr pn gn errorMsg = do
    inGameDo gn $ execGameEvent $ GLog (Just pn) ("Error in submitted rule: " ++ errorMsg)
    warn pn ("Error in submitted rule: " ++ errorMsg)
    modifyProfile pn (pLastRule .~ Just (sr, errorMsg))
@@ -205,6 +204,7 @@ inputResult pn en is id gn = inGameDo gn $ execGameEvent $ InputResult pn en is 
 applyTimeEvent :: UTCTime -> Game -> StateT Session IO () 
 applyTimeEvent t g = do
    let ts = G.getTimeEvents t g
+   when (not $ null ts) $ debug 0 "Time event found"
    mapM_ (\t -> inGameDo (_gameName g) $ execGameEvent $ TimeEvent t) ts
 
 
@@ -282,3 +282,4 @@ evalSession sm s = do
 warn, info :: (MonadIO m) => Int -> String -> m ()
 info pn s = liftIO $ infoM "Nomyx.Core.Session" ("Player " ++ (show pn) ++ " " ++ s)
 warn pn s = liftIO $ warningM "Nomyx.Core.Session" ("Player " ++ (show pn) ++ " " ++ s)
+debug pn s = liftIO $ debugM "Nomyx.Core.Session" ("Player " ++ (show pn) ++ " " ++ s)
