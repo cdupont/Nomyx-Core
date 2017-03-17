@@ -8,10 +8,12 @@ import           Prelude                             hiding (log, (.))
 import           Control.Category
 import           Control.Lens                        hiding ((.=))
 import           Control.Monad.State
-import           Data.Yaml                           (decodeEither, encode)
+import           Data.Yaml                           as Yaml (decodeEither, encode)
+import qualified Data.Aeson                          as Json (eitherDecode, encode)
 import           Data.List
 import qualified Data.Text.IO                        as DT
-import qualified Data.ByteString.Char8               as BL
+import qualified Data.ByteString.Char8               as BC
+import qualified Data.ByteString.Lazy                as BL
 import           Nomyx.Core.Engine
 import           Nomyx.Core.Engine.Interpret
 import           Nomyx.Core.Types
@@ -20,7 +22,7 @@ import           Nomyx.Language
 import           System.FilePath
 
 save :: Multi -> IO ()
-save m = BL.writeFile (getSaveFile $ _mSettings m) (encode m)
+save m = BL.writeFile (getSaveFile $ _mSettings m) (Json.encode m)
 
 save' :: StateT Multi IO ()
 save' = get >>= lift . save
@@ -28,7 +30,7 @@ save' = get >>= lift . save
 load :: FilePath -> IO Multi
 load fp = do
    s <- BL.readFile fp
-   case decodeEither s of
+   case Json.eitherDecode s of
       Left e -> error $ "error decoding save file: " ++ e
       Right a -> return a
 
@@ -60,8 +62,8 @@ readLibrary yamlFile = do
 
 readTemplates :: FilePath -> IO [RuleTemplate]
 readTemplates yamlFile = do
-  s <- BL.readFile yamlFile
-  case decodeEither s of
+  s <- BC.readFile yamlFile
+  case Yaml.decodeEither s of
      Left e -> error $ "error decoding library: " ++ e
      Right ts -> return ts
 
@@ -76,6 +78,6 @@ writeLibrary :: FilePath -> Library -> IO ()
 writeLibrary yamlFile (Library ts ms) = do
    let dir = takeDirectory yamlFile
    putStrLn $ "saving templates: " ++ yamlFile
-   BL.writeFile yamlFile (encode ts)
+   BC.writeFile yamlFile (Yaml.encode ts)
    mapM_ (saveModule dir) ms
    
