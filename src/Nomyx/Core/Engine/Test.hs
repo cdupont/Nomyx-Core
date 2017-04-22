@@ -23,6 +23,7 @@ import Control.Lens
 import System.Random
 import Imprevu.Test.TestMgt
 import Imprevu.Evaluation hiding (events)
+import qualified Imprevu.Events as Imp
 import Debug.NoTrace -- .Helpers    (traceM)
 
 
@@ -129,6 +130,43 @@ testVar5 = do
 
 testVarEx5 :: Bool
 testVarEx5 = (show $ head $ _variables $ execRule testVar5) == "Rule number = 0, Name = \"toto\", Value = [2,1]\n"
+
+testSendMessage :: Rule
+testSendMessage = do
+    let msg = Signal "msg" :: Msg String
+    onEvent_ (Imp.messageEvent msg) f
+    sendMessage msg "toto" where
+        f (a :: String) = outputAll_ a
+
+testSendMessageEx :: Bool
+testSendMessageEx = isOutput "toto" (execRule testSendMessage)
+
+testSendMessage2 :: Rule
+testSendMessage2 = do
+    onEvent_ (Imp.messageEvent (Signal "msg" :: Msg ())) $ const $ outputAll_ "Received"
+    sendMessage_ "msg"
+
+testSendMessageEx2 :: Bool
+testSendMessageEx2 = isOutput "Received" (execRule testSendMessage2)
+
+testAPICall :: Rule
+testAPICall = do
+    let call = APICall "test" :: APICall String String
+    onAPICall call return
+    callAPI call "toto" outputAll_
+
+testAPICallEx :: Bool
+testAPICallEx = isOutput "toto" (execRule testAPICall)
+
+testAPICall2 :: Rule
+testAPICall2 = do
+    let call = APICall "test" :: APICall String String
+    onAPICall call return
+    a <- callAPIBlocking call "toto"
+    outputAll_ a
+
+testAPICallEx2 :: Bool
+testAPICallEx2 = isOutput "toto" (execRule testAPICall2)
 
 -- Test rule activation
 testActivateRule :: Rule
