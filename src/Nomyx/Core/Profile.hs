@@ -106,11 +106,14 @@ defaultPlayerSettings = PlayerSettings "" Nothing False False False False
 modifyProfile :: PlayerNumber -> (ProfileData -> ProfileData) -> StateT Session IO ()
 modifyProfile pn mod = do
    s <- get
-   pfd <- query' (_acidProfiles s) (AskProfileData pn)
-   when (isJust pfd) $ void $ update' (_acidProfiles s) (SetProfileData (mod $ fromJust pfd))
+   pfd <- getProfile s pn
+   when (isJust pfd) $ setProfile s (mod $ fromJust pfd)
 
 getProfile :: MonadIO m => Session -> PlayerNumber -> m (Maybe ProfileData)
 getProfile s pn = query' (_acidProfiles s) (AskProfileData pn)
+
+setProfile :: MonadIO m => Session -> ProfileData -> m ()
+setProfile s fd = void $ update' (_acidProfiles s) (SetProfileData fd)
 
 getPlayerName :: PlayerNumber -> Session -> IO PlayerName
 getPlayerName pn s = do

@@ -17,7 +17,6 @@ module Nomyx.Core.Session (
   checkRule,
   -- * Library management
   newRuleTemplate,
-  addRuleTemplate,
   delRuleTemplate,
   updateLibrary,
   -- * Modules
@@ -168,9 +167,9 @@ newModule pn modi = do
   modifyProfile pn $ (pLibrary . mModules) %~ (addModule modi)
 
 addModule :: ModuleInfo -> [ModuleInfo] -> [ModuleInfo]
-addModule mi mis = case (find (\mi' -> (_modPath mi) == (_modPath mi'))) mis of
-  (Just mi') -> replace mi' mi mis
-  Nothing -> mi:mis
+addModule mi' mis = case (find (\mi -> (_modPath mi) == (_modPath mi'))) mis of
+  (Just mi) -> replace mi mi' mis
+  Nothing -> mi':mis
 
 submitRuleError :: RuleTemplate -> PlayerNumber -> GameName -> String -> StateT Session IO ()
 submitRuleError sr pn gn errorMsg = do
@@ -179,19 +178,25 @@ submitRuleError sr pn gn errorMsg = do
    modifyProfile pn (pLastRule .~ Just (sr, errorMsg))
 
 newRuleTemplate :: PlayerNumber -> RuleTemplate -> StateT Session IO ()
-newRuleTemplate pn rt = do
-  info pn " inserted new template"
-  modifyProfile pn $ (pLibrary . mTemplates) %~ (addRuleTemplate rt)
+newRuleTemplate pn rt' = do
+  info pn "submitted a rule template"
+  s <- get
+  mpd <- getProfile s pn
+  forM_ mpd $ \pd -> do
+    let rts = _mTemplates $ _pLibrary pd
+    rts' <- case (find (\rt -> (_rName rt) == (_rName rt'))) rts of
+      (Just rt) -> do
+         info pn $ "template with same name found, replacing with " ++ (show rt') 
+         return $ replace rt rt' rts
+      Nothing -> do
+         info pn "no template with that name found, adding new one"
+         return $ rt':rts
+    setProfile s $ (pLibrary . mTemplates) .~ rts' $ pd
 
 updateLibrary :: PlayerNumber -> Library -> StateT Session IO ()
 updateLibrary pn lib = do
   info pn " updated library"
   modifyProfile pn $ pLibrary .~ lib
-
-addRuleTemplate :: RuleTemplate -> [RuleTemplate] -> [RuleTemplate]
-addRuleTemplate rt rts = case (find (\rt' -> (_rName rt) == (_rName rt'))) rts of
-  (Just rt') -> replace rt' rt rts
-  Nothing -> rt:rts
 
 delRuleTemplate :: RuleName -> PlayerNumber -> StateT Session IO ()
 delRuleTemplate rn pn = do
