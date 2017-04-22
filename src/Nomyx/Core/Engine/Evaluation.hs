@@ -97,7 +97,7 @@ evOnEvent ev h = do
    return en
 
 evSendMessage :: (Typeable a, Show a) => Msg a -> a -> Evaluate ()
-evSendMessage m = triggerEvent (Signal m)
+evSendMessage m a = triggerEvent m a
 
 evProposeRule :: RuleInfo -> Evaluate Bool
 evProposeRule rule = do
