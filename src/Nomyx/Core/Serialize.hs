@@ -56,9 +56,10 @@ readLibrary :: FilePath -> IO Library
 readLibrary yamlFile = do
    let dir = takeDirectory yamlFile
    ts <- readTemplates yamlFile
+   let ts' = map (\rt -> RuleTemplateInfo rt "") ts
    let mods = nub $ join [ms | (RuleTemplate _ _ _ _ _ _ ms) <- ts]
    ms <- mapM (readModule dir) mods
-   return $ Library ts ms
+   return $ Library ts' ms
 
 readTemplates :: FilePath -> IO [RuleTemplate]
 readTemplates yamlFile = do

@@ -42,9 +42,6 @@ askProfileData uid = do
    let filtered = filter (\a -> _pPlayerNumber a == uid) pfs
    return $ headMay filtered
 
-initialProfileData :: PlayerNumber -> PlayerSettings -> Library -> ProfileData
-initialProfileData uid ps lib = ProfileData uid ps (Just (exampleRule, "")) NoUpload False lib
-
 exampleRule :: RuleTemplate
 exampleRule = RuleTemplate "" "" [cr|
 --This is an example new rule that you can enter.
@@ -70,7 +67,7 @@ newProfileData uid ps lib =
     do pds@(ProfileDataState {..}) <- get
        case IxSet.getOne (profilesData @= uid) of
          Nothing -> do
-            let pd = initialProfileData uid ps lib
+            let pd = ProfileData uid ps False lib
             put $ pds { profilesData = IxSet.updateIx uid pd profilesData }
             return pd
          Just profileData -> return profileData

@@ -144,11 +144,12 @@ compileRule rt pn gn re msg = do
       Right r -> do
          info pn "proposed rule compiled OK "
          inGameDo gn $ G.execGameEvent' (Just r) (ProposeRuleEv re pn rt mods)
-         modifyProfile pn (pLastRule .~ Just (rt, msg))
+         submitRuleMsg pn rt msg
          return True
       Left e -> do
-         let errorMsg = showInterpreterError e
-         submitRuleError rt pn gn errorMsg 
+         let errorMsg = (showInterpreterError e)
+         info pn $ "Compile error: " ++ errorMsg
+         submitRuleMsg pn rt errorMsg 
          return False
 
 getModules :: PlayerNumber -> RuleTemplate -> StateT Session IO [ModuleInfo]
@@ -171,26 +172,35 @@ addModule mi' mis = case (find (\mi -> (_modPath mi) == (_modPath mi'))) mis of
   (Just mi) -> replace mi mi' mis
   Nothing -> mi':mis
 
-submitRuleError :: RuleTemplate -> PlayerNumber -> GameName -> String -> StateT Session IO ()
-submitRuleError sr pn gn errorMsg = do
-   inGameDo gn $ execGameEvent $ GLog (Just pn) ("Error in submitted rule: " ++ errorMsg)
-   warn pn ("Error in submitted rule: " ++ errorMsg)
-   modifyProfile pn (pLastRule .~ Just (sr, errorMsg))
+submitRuleMsg :: PlayerNumber -> RuleTemplate -> CompileMsg -> StateT Session IO ()
+submitRuleMsg pn rt m = do 
+  s <- get
+  mpd <- getProfile s pn
+  let rti = RuleTemplateInfo rt m
+  forM_ mpd $ \pd -> do
+    let rts = _mTemplates $ _pLibrary pd
+    rts' <- case (find (\rti' -> (_rName $ _iRuleTemplate rti) == (_rName $ _iRuleTemplate rti'))) rts of
+      (Just rti') -> do
+         info pn $ "Adding message to template " ++ (show rti) 
+         return $ replace rti' rti rts
+      Nothing -> error "submitRuleMsg: no template with that name found"
+    setProfile s $ (pLibrary . mTemplates) .~ rts' $ pd
 
 newRuleTemplate :: PlayerNumber -> RuleTemplate -> StateT Session IO ()
-newRuleTemplate pn rt' = do
+newRuleTemplate pn rt = do
   info pn "submitted a rule template"
   s <- get
   mpd <- getProfile s pn
+  let rti = RuleTemplateInfo rt ""
   forM_ mpd $ \pd -> do
     let rts = _mTemplates $ _pLibrary pd
-    rts' <- case (find (\rt -> (_rName rt) == (_rName rt'))) rts of
-      (Just rt) -> do
-         info pn $ "template with same name found, replacing with " ++ (show rt') 
-         return $ replace rt rt' rts
+    rts' <- case (find (\rti' -> (_rName $ _iRuleTemplate rti) == (_rName $ _iRuleTemplate rti'))) rts of
+      (Just rti') -> do
+         info pn $ "template with same name found, replacing with " ++ (show rti) 
+         return $ replace rti' rti rts
       Nothing -> do
          info pn "no template with that name found, adding new one"
-         return $ rt':rts
+         return $ rti:rts
     setProfile s $ (pLibrary . mTemplates) .~ rts' $ pd
 
 updateLibrary :: PlayerNumber -> Library -> StateT Session IO ()
@@ -201,7 +211,7 @@ updateLibrary pn lib = do
 delRuleTemplate :: RuleName -> PlayerNumber -> StateT Session IO ()
 delRuleTemplate rn pn = do
   info pn $ "del template " ++ show rn
-  modifyProfile pn $ (pLibrary . mTemplates) %~ filter (\rt -> _rName rt /= rn)
+  modifyProfile pn $ (pLibrary . mTemplates) %~ filter (\rt -> (_rName $ _iRuleTemplate rt) /= rn)
 
 inputResult :: PlayerNumber -> EventNumber -> Input -> InputData -> GameName -> StateT Session IO ()
 inputResult pn en is id gn = inGameDo gn $ execGameEvent $ InputResult pn en is id

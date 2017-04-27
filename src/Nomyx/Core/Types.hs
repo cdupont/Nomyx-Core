@@ -28,8 +28,7 @@ import           Nomyx.Core.Engine.Types
 
 type PlayerPassword = String
 type Port = Int
-type CompileError = String
-type LastRule = (RuleTemplate, String)
+type CompileMsg = String
 
 -- * Game structures
 
@@ -76,9 +75,13 @@ data MailSettings = MailSettings {_sendMails :: Bool,
                                   deriving (Eq, Show, Read, Typeable)
 
 -- | The Library contains a list of rule templates together with their declarations
-data Library = Library { _mTemplates :: [RuleTemplate],
+data Library = Library { _mTemplates :: [RuleTemplateInfo],
                          _mModules   :: [ModuleInfo]}
                          deriving (Eq, Ord, Typeable)
+
+data RuleTemplateInfo = RuleTemplateInfo { _iRuleTemplate :: RuleTemplate,
+                                           _iCompileMsg   :: CompileMsg}
+                                           deriving (Eq, Show, Ord)
 
 instance Show Library where
    show (Library ts ms) = "\n\n Library Templates = " ++ (intercalate "\n " $ map show ts) ++
@@ -94,14 +97,12 @@ data ProfileDataState = ProfileDataState { profilesData :: IxSet ProfileData }
 data ProfileData =
     ProfileData { _pPlayerNumber   :: PlayerNumber, -- same as UserId
                   _pPlayerSettings :: PlayerSettings,
-                  _pLastRule       :: Maybe LastRule,
-                  _pLastUpload     :: LastUpload,
                   _pIsAdmin        :: Bool,
                   _pLibrary        :: Library}
                   deriving (Eq, Ord, Show, Typeable, Generic)
 
 instance Indexable ProfileData where
-      empty =  ixSet [ ixFun (\(ProfileData pn _ _ _ _ _) -> [pn])]
+      empty =  ixSet [ ixFun (\(ProfileData pn _ _ _) -> [pn])]
 
 -- Settings of a single player
 data PlayerSettings =
@@ -113,22 +114,17 @@ data PlayerSettings =
                     _mailConfirmed  :: Bool}
                     deriving (Eq, Show, Read, Data, Ord, Typeable, Generic)
 
-data LastUpload = NoUpload
-                | UploadSuccess
-                | UploadFailure (FilePath, CompileError)
-                deriving (Eq, Ord, Read, Show, Typeable, Data, Generic)
-
-
-$(deriveSafeCopy 1 'base ''LastUpload)
 $(deriveSafeCopy 1 'base ''PlayerSettings)
 $(deriveSafeCopy 1 'base ''ProfileData)
 $(deriveSafeCopy 1 'base ''RuleTemplate)
 $(deriveSafeCopy 1 'base ''ModuleInfo)
 $(deriveSafeCopy 1 'base ''ProfileDataState)
 $(deriveSafeCopy 1 'base ''Library)
+$(deriveSafeCopy 1 'base ''RuleTemplateInfo)
 
 makeLenses ''Multi
 makeLenses ''Library
+makeLenses ''RuleTemplateInfo
 makeLenses ''ModuleInfo
 makeLenses ''GameInfo
 makeLenses ''Settings
@@ -139,11 +135,11 @@ makeLenses ''ProfileData
 makeLenses ''MailSettings
 
 $(deriveJSON defaultOptions ''Library)
+$(deriveJSON defaultOptions ''RuleTemplateInfo)
 $(deriveJSON defaultOptions ''GameInfo)
 $(deriveJSON defaultOptions ''Multi)
 $(deriveJSON defaultOptions ''Settings)
 $(deriveJSON defaultOptions ''Network)
-$(deriveJSON defaultOptions ''LastUpload)
 $(deriveJSON defaultOptions ''PlayerSettings)
 $(deriveJSON defaultOptions ''ProfileData)
 $(deriveJSON defaultOptions ''RuleInfo)
