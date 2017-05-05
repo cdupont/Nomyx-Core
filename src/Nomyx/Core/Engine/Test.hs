@@ -22,7 +22,7 @@ import Data.Maybe
 import Control.Lens
 import System.Random
 import Imprevu.Test.TestMgt
-import Imprevu.Evaluation hiding (events)
+import Imprevu.Evaluation hiding (events, getEventResult)
 import qualified Imprevu.Events as Imp
 import Debug.NoTrace -- .Helpers    (traceM)
 
@@ -160,11 +160,11 @@ testGetEventResults = do
    let msg = Signal "msg1" :: Msg Bool
    en <- onEvent myEvent $ const $ outputAll_ "Received"
    sendMessage msg True
-   r <- getEventResults en [Imp.messageEvent msg]
+   r <- getEventResult en (Imp.messageEvent msg)
    outputAll_ $ show r
 
 testGetEventResultsEx :: Bool
-testGetEventResultsEx = isOutput "[Just True]" (execRule testGetEventResults)
+testGetEventResultsEx = isOutput "Just True" (execRule testGetEventResults)
 
 testAPICall :: Rule
 testAPICall = do

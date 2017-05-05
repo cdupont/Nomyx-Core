@@ -56,7 +56,7 @@ evalNomex (ReadVar v)     = evReadVar v
 evalNomex (GetOutput on)  = evGetOutput on
 evalNomex  GetRules       = use (evalEnv . eGame . rules)
 evalNomex  GetPlayers     = use (evalEnv . eGame . players)
-evalNomex (GetEventResults en evs) = evGetResults en evs
+evalNomex (GetEventResult en evs) = evGetResult en evs
 evalNomex  SelfRuleNumber = use (evalEnv . eRuleNumber)
 evalNomex (GetCurrentTime)= use (evalEnv . eGame . currentTime)
 evalNomex (Simu sim ev)   = evSimu sim ev
@@ -99,20 +99,19 @@ evOnEvent ev h = do
 evSendMessage :: (Typeable a, Show a) => Msg a -> a -> Evaluate ()
 evSendMessage m a = triggerEvent m a
 
-evGetResults :: (Show a) => EventNumber -> [Event a] -> Evaluate [Maybe a]
-evGetResults en es = do
+evGetResult :: (Show a) => EventNumber -> Event a -> Evaluate (Maybe a)
+evGetResult en es = do
    (reis, _) <- accessGame events
    let eis = map _erEventInfo reis
    let mei = find (\(EventInfo en' _ _ _ _) -> en' == en) eis 
    case mei of
-     Just (EventInfo _ _ _ SActive sos) -> do
-       mapM (getEventResult'' sos) es
-     _ -> return []
+     Just (EventInfo _ _ _ SActive sos) -> getEventResult'' sos es
+     _ -> return Nothing
 
 getEventResult'' :: [SignalOccurence] -> Event a -> Evaluate (Maybe a)
 getEventResult'' sos ev = do
    let sos' = map (\(SignalOccurence s _) -> (SignalOccurence s Nothing)) sos
-   r <- getEventResult ev sos'
+   r <- Imp.getEventResult ev sos'
    return $ toMaybe r
 
 evProposeRule :: RuleInfo -> Evaluate Bool
