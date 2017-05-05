@@ -105,15 +105,15 @@ evGetResults en es = do
    let eis = map _erEventInfo reis
    let mei = find (\(EventInfo en' _ _ _ _) -> en' == en) eis 
    case mei of
-     Just ei@(EventInfo _ _ _ _ sos) -> do
+     Just (EventInfo _ _ _ SActive sos) -> do
        mapM (getEventResult'' sos) es
-     Nothing -> return []
+     _ -> return []
 
 getEventResult'' :: [SignalOccurence] -> Event a -> Evaluate (Maybe a)
 getEventResult'' sos ev = do
-  let sos' = map (\(SignalOccurence s _) -> (SignalOccurence s Nothing)) sos
-  r <- getEventResult ev sos'
-  return $ toMaybe r
+   let sos' = map (\(SignalOccurence s _) -> (SignalOccurence s Nothing)) sos
+   r <- getEventResult ev sos'
+   return $ toMaybe r
 
 evProposeRule :: RuleInfo -> Evaluate Bool
 evProposeRule rule = do
