@@ -149,6 +149,23 @@ testSendMessage2 = do
 testSendMessageEx2 :: Bool
 testSendMessageEx2 = isOutput "Received" (execRule testSendMessage2)
 
+myEvent :: Event (Bool, Bool)
+myEvent = do
+   a <- Imp.messageEvent (Signal "msg1" :: Msg Bool) 
+   b <- Imp.messageEvent (Signal "msg2" :: Msg Bool) 
+   return (a, b)
+
+testGetEventResults :: Rule
+testGetEventResults = do
+   let msg = Signal "msg1" :: Msg Bool
+   en <- onEvent myEvent $ const $ outputAll_ "Received"
+   sendMessage msg True
+   r <- getEventResults en [Imp.messageEvent msg]
+   outputAll_ $ show r
+
+testGetEventResultsEx :: Bool
+testGetEventResultsEx = isOutput "[Just True]" (execRule testGetEventResults)
+
 testAPICall :: Rule
 testAPICall = do
     let call = APICall "test" :: APICall String String

@@ -12,6 +12,7 @@ tests = return [
   test testVarEx5                    "test var 5",
   test testSendMessageEx             "test send message 1",
   test testSendMessageEx2            "test send message 2",
+  test testGetEventResultsEx         "test get event results",
   test testAPICallEx                 "test API call 1",
   test testAPICallEx2                "test API call 2",
   test testActivateRuleEx            "test activate rule",
