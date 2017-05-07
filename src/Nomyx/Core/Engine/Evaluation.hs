@@ -52,14 +52,15 @@ evalNomex (Bind ex f)             = evalNomex ex >>= \e -> evalNomex (f e)
 evalNomex (GetRandomNumber r)     = evGetRandomNumber r
 
 -- | evaluate an effectless expression.
-evalNomex (ReadVar v)     = evReadVar v
-evalNomex (GetOutput on)  = evGetOutput on
-evalNomex  GetRules       = use (evalEnv . eGame . rules)
-evalNomex  GetPlayers     = use (evalEnv . eGame . players)
+evalNomex (ReadVar v)             = evReadVar v
+evalNomex (GetOutput on)          = evGetOutput on
+evalNomex  GetRules               = use (evalEnv . eGame . rules)
+evalNomex  GetPlayers             = use (evalEnv . eGame . players)
 evalNomex (GetEventResult en evs) = evGetResult en evs
-evalNomex  SelfRuleNumber = use (evalEnv . eRuleNumber)
-evalNomex (GetCurrentTime)= use (evalEnv . eGame . currentTime)
-evalNomex (Simu sim ev)   = evSimu sim ev
+evalNomex (IsEventActive en)      = evIsEventActive en
+evalNomex  SelfRuleNumber         = use (evalEnv . eRuleNumber)
+evalNomex (GetCurrentTime)        = use (evalEnv . eGame . currentTime)
+evalNomex (Simu sim ev)           = evSimu sim ev
 
 
 evNewVar :: (Typeable a, Show a) => VarName -> a -> Evaluate (Maybe (V a))
@@ -105,14 +106,20 @@ evGetResult en es = do
    let eis = map _erEventInfo reis
    let mei = find (\(EventInfo en' _ _ _ _) -> en' == en) eis 
    case mei of
-     Just (EventInfo _ _ _ SActive sos) -> getEventResult'' sos es
-     _ -> return Nothing
+     Just (EventInfo _ _ _ _ sos) -> getEventResult'' sos es
+     Nothing -> return Nothing
 
 getEventResult'' :: [SignalOccurence] -> Event a -> Evaluate (Maybe a)
 getEventResult'' sos ev = do
    let sos' = map (\(SignalOccurence s _) -> (SignalOccurence s Nothing)) sos
    r <- Imp.getEventResult ev sos'
    return $ toMaybe r
+
+evIsEventActive :: EventNumber -> Evaluate Bool
+evIsEventActive en = do 
+   (reis, _) <- accessGame events
+   let eis = map _erEventInfo reis
+   return $ any (\(EventInfo en' _ _ s _) -> en' == en && s == SActive) eis 
 
 evProposeRule :: RuleInfo -> Evaluate Bool
 evProposeRule rule = do
