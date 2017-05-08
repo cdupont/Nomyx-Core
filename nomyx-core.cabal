@@ -59,12 +59,12 @@ library
         Cpp-options: -DWINDOWS
     else
         build-depends: unix >= 2.6 && < 3
-
     extensions: CPP
     exposed: True
     buildable: True
     hs-source-dirs: src
     exposed-modules: Nomyx.Core.Types
+                     Nomyx.Core.TypesV1_0
                      Nomyx.Core.Profile
                      Nomyx.Core.Session
                      Nomyx.Core.Multi

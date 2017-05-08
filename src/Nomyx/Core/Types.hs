@@ -15,7 +15,7 @@ import           Data.Acid                           (AcidState)
 import           Data.Aeson.TH                       (defaultOptions, deriveJSON)
 import           Data.Data                           (Data)
 import           Data.IxSet                          (ixFun, ixSet, Indexable(..), IxSet)
-import           Data.SafeCopy                       (base, deriveSafeCopy)
+import           Data.SafeCopy                       (base, extension, deriveSafeCopy, Migrate(..))
 import           Data.Time
 import           Data.List
 import           Data.Typeable
@@ -25,6 +25,7 @@ import           Network.BSD
 import           Nomyx.Language
 import           Nomyx.Core.Engine
 import           Nomyx.Core.Engine.Types
+
 
 type PlayerPassword = String
 type Port = Int
@@ -114,13 +115,15 @@ data PlayerSettings =
                     _mailConfirmed  :: Bool}
                     deriving (Eq, Show, Read, Data, Ord, Typeable, Generic)
 
+
 $(deriveSafeCopy 1 'base ''PlayerSettings)
-$(deriveSafeCopy 1 'base ''ProfileData)
 $(deriveSafeCopy 1 'base ''RuleTemplate)
 $(deriveSafeCopy 1 'base ''ModuleInfo)
 $(deriveSafeCopy 1 'base ''ProfileDataState)
-$(deriveSafeCopy 1 'base ''Library)
 $(deriveSafeCopy 1 'base ''RuleTemplateInfo)
+$(deriveSafeCopy 2 'extension ''ProfileData)
+$(deriveSafeCopy 2 'extension ''Library)
+
 
 makeLenses ''Multi
 makeLenses ''Library
@@ -153,3 +156,38 @@ instance ToJSON Rule where
 instance FromJSON Rule where
    parseJSON (Object _) = error "FromJSON"
 
+-- * Migrations
+
+-- | The Library conains a list of rule templates gether with their declarations
+data LibraryV1_0 = LibraryV1_0 { _mTemplates1 :: [RuleTemplate],
+                                 _mModules1   :: [ModuleInfo]}
+                         deriving (Eq, Ord, Typeable, Show)
+$(deriveSafeCopy 1 'base ''LibraryV1_0)
+
+type LastRule = (RuleTemplate, String)
+type CompileError = String
+
+data LastUploadV1_0 = NoUpload
+                | UploadSuccess
+                | UploadFailure (FilePath, CompileError)
+                deriving (Eq, Ord, Read, Show, Typeable, Data, Generic)
+$(deriveSafeCopy 1 'base ''LastUploadV1_0)
+
+-- | 'ProfileData' contains player settings
+data ProfileDataV1_0 =
+    ProfileDataV1_0 { _pPlayerNumber1   :: PlayerNumber, -- same as UserId
+                  _pPlayerSettings1 :: PlayerSettings,
+                  _pLastRule1       :: Maybe LastRule,
+                  _pLastUpload1     :: LastUploadV1_0,
+                  _pIsAdmin1        :: Bool,
+                  _pLibrary1        :: LibraryV1_0}
+                  deriving (Eq, Ord, Show, Typeable, Generic)
+$(deriveSafeCopy 1 'base ''ProfileDataV1_0)
+
+instance Migrate ProfileData where
+     type MigrateFrom ProfileData = ProfileDataV1_0
+     migrate (ProfileDataV1_0 pn set _ _ admin lib) = ProfileData pn set admin (migrate lib)
+
+instance Migrate Library where
+     type MigrateFrom Library = LibraryV1_0
+     migrate (LibraryV1_0 tps ms) = Library (map (\tp -> RuleTemplateInfo tp "") tps) ms 
