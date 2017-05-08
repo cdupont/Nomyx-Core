@@ -64,7 +64,6 @@ library
     buildable: True
     hs-source-dirs: src
     exposed-modules: Nomyx.Core.Types
-                     Nomyx.Core.TypesV1_0
                      Nomyx.Core.Profile
                      Nomyx.Core.Session
                      Nomyx.Core.Multi
