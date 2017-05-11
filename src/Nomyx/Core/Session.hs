@@ -179,12 +179,12 @@ submitRuleMsg pn rt m = do
   let rti = RuleTemplateInfo rt m
   forM_ mpd $ \pd -> do
     let rts = _mTemplates $ _pLibrary pd
-    rts' <- case (find (\rti' -> (_rName $ _iRuleTemplate rti) == (_rName $ _iRuleTemplate rti'))) rts of
+    case (find (\rti' -> (_rName $ _iRuleTemplate rti) == (_rName $ _iRuleTemplate rti'))) rts of
       (Just rti') -> do
          info pn $ "Adding message to template " ++ (show rti) 
-         return $ replace rti' rti rts
-      Nothing -> error "submitRuleMsg: no template with that name found"
-    setProfile s $ (pLibrary . mTemplates) .~ rts' $ pd
+         let rts' = replace rti' rti rts
+         setProfile s $ (pLibrary . mTemplates) .~ rts' $ pd
+      Nothing -> error' pn "submitRuleMsg: no template with that name found"
 
 newRuleTemplate :: PlayerNumber -> RuleTemplate -> StateT Session IO ()
 newRuleTemplate pn rt = do
@@ -298,3 +298,4 @@ warn, info :: (MonadIO m) => Int -> String -> m ()
 info pn s = liftIO $ infoM "Nomyx.Core.Session" ("Player " ++ (show pn) ++ " " ++ s)
 warn pn s = liftIO $ warningM "Nomyx.Core.Session" ("Player " ++ (show pn) ++ " " ++ s)
 debug pn s = liftIO $ debugM "Nomyx.Core.Session" ("Player " ++ (show pn) ++ " " ++ s)
+error' pn s = liftIO $ errorM "Nomyx.Core.Session" ("Player " ++ (show pn) ++ " " ++ s)
