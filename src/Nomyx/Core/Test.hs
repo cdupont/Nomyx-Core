@@ -1,6 +1,7 @@
 {-# LANGUAGE TupleSections #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE QuasiQuotes #-}
+{-# LANGUAGE OverloadedStrings    #-}
 
 -- | Test module
 module Nomyx.Core.Test where
@@ -15,6 +16,7 @@ import           Data.List
 import           Data.Maybe
 import qualified Data.Text.IO as DT
 import           Data.Acid
+import qualified Data.Text as T
 import           Data.Acid.Memory
 import           Data.Time hiding (getCurrentTime)
 import           Paths_nomyx_core as PNC
@@ -31,6 +33,7 @@ import           Nomyx.Core.Quotes
 import           Nomyx.Core.Engine
 import qualified Nomyx.Core.Engine as G
 import           Imprevu.Evaluation
+import           Imprevu.Events hiding (onEvent_)
 
 
 playTests :: Maybe String -> Int -> IO [(String, Bool)]
@@ -40,16 +43,20 @@ playTests mTestName delay = do
          let tsts = fatalTests ++ regularTests
          return $ maybeToList $ find (\(name, _, _) -> name == testName) tsts
       Nothing -> return regularTests
-   tp <- testProfiles
-   let session = Session (defaultMulti (Settings {_net = defaultNetwork, 
-                                                 _mailSettings = (MailSettings False "" "" ""),
-                                                 _adminPassword = "",
-                                                 _saveDir = "",
-                                                 _webDir = "",
-                                                 _sourceDir = "",
-                                                 _watchdog = delay})
-                                       (Library [RuleTemplateInfo rAutoActivate ""] [])) tp
+   session <- getTestSession delay
    mapM (\(title, t, cond) -> (title,) <$> test title session t cond) tests
+
+getTestSession :: Int -> IO Session
+getTestSession delay = do
+   tp <- testProfiles
+   return $ Session (defaultMulti (Settings {_net = defaultNetwork, 
+                                             _mailSettings = (MailSettings False "" "" ""),
+                                             _adminPassword = "",
+                                             _saveDir = "",
+                                             _webDir = "",
+                                             _sourceDir = "",
+                                             _watchdog = delay})
+                                       (Library [RuleTemplateInfo rAutoActivate ""] [])) tp
 
 defaultNetwork :: Network
 defaultNetwork = Network "" 0
@@ -74,7 +81,8 @@ regularTests =
 
 -- Those tests should make the game die immediately because of security problem (it will be re-launched)
 fatalTests :: [(String, StateT Session IO (), Multi -> Bool)]
-fatalTests = [("Timeout type check", gameBadTypeCheck, const True)]
+fatalTests = [("Timeout type check", gameBadTypeCheck, const True),
+              ("seg fault", segFault, const True)]
 
 
 test :: String -> Session -> StateT Session IO () -> (Multi -> Bool) -> IO Bool
@@ -123,6 +131,13 @@ submitR :: String -> StateT Session IO ()
 submitR r = do
    onePlayerOneGame
    submitRule (RuleTemplate "" "" r "" Nothing [] []) 1 "test"
+
+submitR' :: String -> T.Text -> StateT Session IO ()
+submitR' r mod = do
+   onePlayerOneGame
+   newModule 1 (ModuleInfo "Test.hs" mod)
+   submitRule (RuleTemplate "" "" r "" Nothing [] ["Test.hs"]) 1 "test"
+
 
 testFile' :: FilePath -> FilePath -> String -> StateT Session IO ()
 testFile' path name func = do
@@ -224,6 +239,17 @@ forbid6 = submitR "void $ unsafePerformIO (readFile \"/etc/passwd\")            
 gameBadTypeCheck :: StateT Session IO ()
 gameBadTypeCheck = submitR
    "void $ let {p x y f = f x y; f x = p x x} in f (f (f (f (f (f (f (f (f (f (f (f (f (f (f (f (f (f (f f)))))))))))))))))) f"
+
+segFault :: StateT Session IO ()
+segFault = do
+   submitR' [cr| void $ onEvent_ (SignalEvent (Signal "msg" :: Msg T)) (\(T s1 s2) -> outputAll_ $ show s2) |]
+            [cr| module Test where 
+                   data T = T String String deriving (Eq, Show) |]
+   submitR' [cr|void $ sendMessage (Signal "msg" :: Msg T) (T "toto") |]
+            [cr|module Test where
+                   data T = T String deriving (Eq, Show) |]
+   return ()
+
 
 stackOverflow  = submitR [cr| let fix f = let x = f x in x                     in showRule $ foldr (.) id (repeat read) $ fix show |]
 outputLimit  = submitR [cr| showRule $ repeat 1|]
