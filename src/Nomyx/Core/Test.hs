@@ -240,18 +240,20 @@ gameBadTypeCheck :: StateT Session IO ()
 gameBadTypeCheck = submitR
    "void $ let {p x y f = f x y; f x = p x x} in f (f (f (f (f (f (f (f (f (f (f (f (f (f (f (f (f (f (f f)))))))))))))))))) f"
 
+-- This sequence makes Nomyx segfault.
+-- The reason is that the two rules have a different expectation of the run-time representation of "T".
 segFault :: StateT Session IO ()
 segFault = do
    submitR' [cr| void $ onEvent_ (SignalEvent (Signal "msg" :: Msg T)) (\(T s1 s2) -> outputAll_ $ show s2) |]
             [cr| module Test where 
                    data T = T String String deriving (Eq, Show) |]
-   submitR' [cr|void $ sendMessage (Signal "msg" :: Msg T) (T "toto") |]
-            [cr|module Test where
+   submitR' [cr| void $ sendMessage (Signal "msg" :: Msg T) (T "toto") |]
+            [cr| module Test where
                    data T = T String deriving (Eq, Show) |]
    return ()
 
 
-stackOverflow  = submitR [cr| let fix f = let x = f x in x                     in showRule $ foldr (.) id (repeat read) $ fix show |]
+stackOverflow  = submitR [cr| let fix f = let x = f x in x in showRule $ foldr (.) id (repeat read) $ fix show |]
 outputLimit  = submitR [cr| showRule $ repeat 1|]
 
 --the game created should be withdrawn
